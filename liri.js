@@ -80,7 +80,7 @@ function myTweets(cmd) {
   var tweetArr = [];
   var tweetObj = {};
 
-  client.get('statuses/user_timeline', params, function (error, tweets, response) {
+  client.get('statuses/user_timeline', params, function (error, tweets) {
     var i;
     if (!error) {
       // if arr.length is < 20, prevents loop from attempting to
