@@ -1,9 +1,10 @@
 // i set all required vars globally
-var keys = require('./keys');
 var fs = require('fs');
+var keys = require('./keys');
 var request = require('request');
 var spotify = require('spotify');
 var Twitter = require('twitter');
+var inquirer = require('inquirer');
 
 // logs results to log.txt
 function logResults(results) {
@@ -18,13 +19,14 @@ function logResults(results) {
 function postResults(obj) {
   var resultsArr = [];
   var resultsStr = '';
+  var i;
 
   // adds command to front of arr
   resultsArr.push(obj.command);
 
   // loops through obj's arr, adding to resultsArr
   // also posts data to console preventing additional for loop
-  for (var i = 0; i < obj.text.length; i++) {
+  for (i = 0; i < obj.text.length; i += 1) {
     console.log(obj.text[i]);
     resultsArr.push(obj.text[i]);
   }
@@ -44,18 +46,22 @@ function postResults(obj) {
   });
 }
 
+// when post-log parameter is used, reads log.txt and writes
+// formatted results to the terminal
 function postLog() {
   fs.readFile('log.txt', 'utf8', function (err, data) {
+    var i;
+    var j;
+    var groupArr;
     var arr = data.split(' | ');
-    console.log('===========================');
+    console.log('================================================================================');
     console.log('log.txt data');
-    for (var i = 0; i < arr.length; i++) {
-      console.log('---------------------------');
-      var groupArr = arr[i].split(',');
-      for (var j = 0; j < groupArr.length; j++) {
+    for (i = 0; i < arr.length; i += 1) {
+      console.log('--------------------------------------------------------------------------------');
+      groupArr = arr[i].split(',');
+      for (j = 0; j < groupArr.length; j += 1) {
         console.log(groupArr[j]);
       }
-      // console.log(arr[i]);
     }
   });
 }
@@ -75,6 +81,7 @@ function myTweets(cmd) {
   var tweetObj = {};
 
   client.get('statuses/user_timeline', params, function (error, tweets, response) {
+    var i;
     if (!error) {
       // if arr.length is < 20, prevents loop from attempting to
       // post tweets that aren't there
@@ -85,7 +92,7 @@ function myTweets(cmd) {
       }
 
       // push tweets to an arr to populate tweetObj later
-      for (var i = 0; i < length; i++) {
+      for (i = 0; i < length; i += 1) {
         tweetArr.push(tweets[i].created_at + ': ' + tweets[i].text);
       }
 
@@ -101,22 +108,23 @@ function myTweets(cmd) {
   });
 }
 
+// utilizes spotify api to get song information
 function spotifyThis(cmd, val) {
-  var songTitle = '';
+  var title;
   var songData;
   var spotifyObj = {};
 
-  // sets default song lookup if no value is entered
-  if (val === undefined) {
-    songTitle = '"The Sign" by Ace of Base';
+  // sets default value if none selected
+  if (val === undefined || val === '') {
+    title = '"The Sign" by Ace of Base';
   } else {
-    songTitle = val;
+    title = val;
   }
 
   // searches spotify by track, selecting top result
-  spotify.search({ type: 'track', query: songTitle }, function (err, data) {
+  spotify.search({ type: 'track', query: title }, function (err, data) {
     if (err) {
-      console.log('Error occurred: ' + err);
+      console.log('Error occurred: s' + err);
     } else {
       songData = data.tracks.items[0];
 
@@ -137,19 +145,18 @@ function spotifyThis(cmd, val) {
 
 // queries omdb for movie results
 function movieThis(cmd, val) {
-  var movieTitle;
+  var title;
   var queryURL;
   var movieObj = {};
 
-  // default movie title if none value present
-  if (val === undefined) {
-    movieTitle = 'Mr. Nobody';
+  if (val === undefined || val === '') {
+    title = 'Mr. Nobody';
   } else {
-    movieTitle = val;
+    title = val;
   }
 
   // queryURL for easier addition of parameters
-  queryURL = 'http://www.omdbapi.com/?t=' + movieTitle + '&tomatoes=true';
+  queryURL = 'http://www.omdbapi.com/?t=' + title + '&tomatoes=true';
 
   request(queryURL, function (error, response, body) {
     if (!error && response.statusCode === 200) {
@@ -175,7 +182,7 @@ function movieThis(cmd, val) {
 // checks command passed in from terminal and calls appropriate function
 function checkCommand(cmd, val) {
   if (cmd === 'my-tweets') {
-    myTweets(cmd);
+    myTweets();
   } else if (cmd === 'spotify-this-song') {
     spotifyThis(cmd, val);
   } else if (cmd === 'movie-this') {
@@ -192,5 +199,65 @@ function checkCommand(cmd, val) {
   }
 }
 
+// asks user to pick a title for movie or song title
+function getTitle(cmd) {
+  inquirer.prompt([
+    {
+      type: 'input',
+      message: 'Please enter the title:',
+      name: 'title'
+    }
+  ]).then(function (result) {
+    if (result.title !== '') {
+      checkCommand(cmd, result.title);
+    }
+  });
+}
+
+// uses inquirer to prompt user for search category / title, if necessary
+function getInfo() {
+  inquirer.prompt([
+    {
+      type: 'list',
+      message: 'Pick a command:',
+      choices: ['my-tweets', 'spotify-this-song', 'movie-this', 'do-what-it-says'],
+      name: 'command'
+    }
+  ]).then(function (result) {
+    if (result.command === 'movie-this' || result.command === 'spotify-this-song') {
+      getTitle(result.command);
+    } else {
+      checkCommand(result.command);
+    }
+  });
+}
+
 // initial function call when program launches
-checkCommand(process.argv[2], process.argv[3]);
+// checkCommand(process.argv[2], process.argv[3]);
+function startProg(userInput) {
+  var searchCmd = userInput[2];
+  var searchArr = [];
+  var searchStr = '';
+  var i;
+
+  // if LIRI Bot called without command, runs inquirer
+  // otherwise runs program based on command / query
+  if (searchCmd === undefined) {
+    getInfo();
+  } else {
+    // if length is > 4, combines query into single string
+    if (userInput.length > 4) {
+      for (i = 3; i < userInput.length; i += 1) {
+        searchArr.push(userInput[i]);
+      }
+      searchStr = searchArr.join(' ');
+    } else {
+      searchStr = userInput[3];
+    }
+    // calls function to check command / query
+    checkCommand(searchCmd, searchStr);
+  }
+}
+
+// initiates the program
+startProg(process.argv);
