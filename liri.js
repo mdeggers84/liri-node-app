@@ -25,7 +25,7 @@ function postResults(obj) {
   resultsArr.push(obj.command);
 
   // loops through obj's arr, adding to resultsArr
-  // also posts data to console preventing additional for loop
+  // also posts data to console
   for (i = 0; i < obj.text.length; i += 1) {
     console.log(obj.text[i]);
     resultsArr.push(obj.text[i]);
@@ -196,6 +196,11 @@ function checkCommand(cmd, val) {
     });
   } else if (cmd === 'post-log') {
     postLog();
+  } else if (cmd === 'sloth') {
+    fs.readFile('sloth.txt', 'utf8', function (error, data) {
+      console.log('');
+      console.log(data);
+    });
   }
 }
 
@@ -204,13 +209,11 @@ function getTitle(cmd) {
   inquirer.prompt([
     {
       type: 'input',
-      message: 'Please enter the title:',
+      message: 'Please enter a title to search for:',
       name: 'title'
     }
   ]).then(function (result) {
-    if (result.title !== '') {
-      checkCommand(cmd, result.title);
-    }
+    checkCommand(cmd, result.title);
   });
 }
 
